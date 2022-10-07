@@ -1,4 +1,5 @@
 import argparse
+import sys
 import time
 from pathlib import Path
 
@@ -29,7 +30,8 @@ def detect(save_img=False):
     set_logging()
     device = select_device(opt.device)
     half = device.type != 'cpu'  # half precision only supported on CUDA
-
+    print("half : ",half)
+    print("trace :",trace)
     # Load model
     model = attempt_load(weights, map_location=device)  # load FP32 model
     stride = int(model.stride.max())  # model stride
@@ -37,6 +39,8 @@ def detect(save_img=False):
 
     if trace:
         model = TracedModel(model, device, opt.img_size)
+    print("trace :",trace)
+    print("half :",half)
 
     if half:
         model.half()  # to FP16
@@ -52,10 +56,17 @@ def detect(save_img=False):
     if webcam:
         view_img = check_imshow()
         cudnn.benchmark = True  # set True to speed up constant image size inference
+        print("source : ",source)
+        print("img_size : ",imgsz)
+        print("stride : ",stride)
         dataset = LoadStreams(source, img_size=imgsz, stride=stride)
     else:
+        print("source : ",source)
+        print("img_size : ",imgsz)
+        print("stride : ",stride)
         dataset = LoadImages(source, img_size=imgsz, stride=stride)
-
+        import sys
+        #sys.exit(1)
     # Get names and colors
     names = model.module.names if hasattr(model, 'module') else model.names
     colors = [[random.randint(0, 255) for _ in range(3)] for _ in names]
@@ -75,6 +86,7 @@ def detect(save_img=False):
             img = img.unsqueeze(0)
 
         # Warmup
+        print("################# augment : ",opt.augment)
         if device.type != 'cpu' and (old_img_b != img.shape[0] or old_img_h != img.shape[2] or old_img_w != img.shape[3]):
             old_img_b = img.shape[0]
             old_img_h = img.shape[2]
@@ -84,6 +96,9 @@ def detect(save_img=False):
 
         # Inference
         t1 = time_synchronized()
+        print("################# augment 2 : ",opt.augment)
+        import sys
+        sys.exit(1)
         pred = model(img, augment=opt.augment)[0]
         t2 = time_synchronized()
 
@@ -131,7 +146,7 @@ def detect(save_img=False):
             print(f'{s}Done. ({(1E3 * (t2 - t1)):.1f}ms) Inference, ({(1E3 * (t3 - t2)):.1f}ms) NMS')
 
             # Stream results
-            if view_img:
+            if True: #view_img:
                 cv2.imshow(str(p), im0)
                 cv2.waitKey(1)  # 1 millisecond
 
@@ -184,6 +199,9 @@ if __name__ == '__main__':
     parser.add_argument('--no-trace', action='store_true', help='don`t trace model')
     opt = parser.parse_args()
     print(opt)
+
+    import sys
+    #sys.exit(1)
     #check_requirements(exclude=('pycocotools', 'thop'))
 
     with torch.no_grad():
